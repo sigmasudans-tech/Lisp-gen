@@ -1,0 +1,53 @@
+name: Build unsigned iOS IPA
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'lispgen-source.zip'
+      - '.github/workflows/ios-unsigned.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract uploaded Flutter project
+        run: |
+          set -euo pipefail
+          test -f lispgen-source.zip || { echo "Upload lispgen-source.zip to the repository root first."; exit 1; }
+          mkdir -p source
+          unzip -q lispgen-source.zip -d source
+          PROJECT_DIR="$(find source -name pubspec.yaml -print -quit | xargs dirname)"
+          test -n "$PROJECT_DIR"
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Resolve dependencies
+        run: flutter pub get
+        working-directory: ${{ env.PROJECT_DIR }}
+
+      - name: Build without code signing
+        run: flutter build ios --release --no-codesign
+        working-directory: ${{ env.PROJECT_DIR }}
+
+      - name: Package unsigned IPA
+        run: |
+          set -euo pipefail
+          APP_PATH="${PROJECT_DIR}/build/ios/iphoneos/Runner.app"
+          test -d "$APP_PATH"
+          mkdir -p unsigned/Payload
+          cp -R "$APP_PATH" unsigned/Payload/Runner.app
+          cd unsigned
+          /usr/bin/zip -qry lispgen-unsigned.ipa Payload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lispgen-unsigned-ipa
+          path: unsigned/lispgen-unsigned.ipa
+          if-no-files-found: error
