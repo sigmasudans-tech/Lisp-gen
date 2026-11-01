@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'lispgen-source.zip'
+      - 'lispgen-unsigned-build.zip'
       - '.github/workflows/ios-unsigned.yml'
   workflow_dispatch:
 
@@ -17,9 +17,9 @@ jobs:
       - name: Extract uploaded Flutter project
         run: |
           set -euo pipefail
-          test -f lispgen-source.zip || { echo "Upload lispgen-source.zip to the repository root first."; exit 1; }
+          test -f lispgen-unsigned-build.zip || { echo "Project archive is missing."; exit 1; }
           mkdir -p source
-          unzip -q lispgen-source.zip -d source
+          unzip -q lispgen-unsigned-build.zip -d source
           PROJECT_DIR="$(find source -name pubspec.yaml -print -quit | xargs dirname)"
           test -n "$PROJECT_DIR"
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
